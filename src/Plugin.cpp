@@ -1,17 +1,14 @@
 #include "Plugin.h"
 #include "Notepad_plus_msgs.h"
 #include "Settings.h"
-#include "menuCmdID.h"
 #include "NppInterface.h"
 #include "SettingsDialog.h"
 
 #include "utils/raii.h"
 
-#include <assert.h>
-
 #include <filesystem>
 #include "utils/IniWorker.h"
-#include "utils/misc.h"
+
 #include "AboutDialog.h"
 
 std::wstring configFileName = L"GoToFile.ini";
@@ -62,12 +59,7 @@ void pluginCleanUp() {
 }
 
 void TryOpenFile(const std::wstring& filename) {
-	std::wstring curPath; {
-		std::vector<wchar_t> buf(MAX_PATH);
-		iface.SendMsgToNpp(NPPM_GETCURRENTDIRECTORY, MAX_PATH, reinterpret_cast<LPARAM>(buf.data()));
-		curPath = buf.data();
-	}
-
+	auto curPath = iface.ActiveFileDirectory();
 	namespace fs = std::experimental::filesystem::v1;
 	auto tryPath = [&](fs::path path) {
 		if (path.empty())
@@ -83,7 +75,7 @@ void TryOpenFile(const std::wstring& filename) {
 				return reinterpret_cast<int>(ShellExecute(g_nppData._nppHandle, L"open", g_Settings.customEditorPath.to_wstring().data(), path.c_str(), nullptr, SW_SHOW)) > 32;
 			}
 
-			auto initialFileName = iface.ActiveFilePath();
+			auto initialFileName = iface.ActiveDocumentPath();
 			if (iface.IsOpened(path))
 				return false;
 
@@ -93,7 +85,7 @@ void TryOpenFile(const std::wstring& filename) {
 			iface.SwitchToFile(path);
 
 			if (g_Settings.openInOtherView)
-				iface.SendMsgToNpp(WM_COMMAND, IDM_VIEW_GOTO_ANOTHER_VIEW);
+				iface.MoveActiveDocumentToOtherView();
 
 			iface.SwitchToFile(initialFileName);
 			if (g_Settings.switchToNewlyOpenedFiles)
@@ -164,39 +156,26 @@ std::wstring extract_filename(const std::vector<char>& buf, int index) {
 
 void GotoFile() {
 	auto activeView = iface.ActiveView();
-	int selBufSize = iface.sendMsgToScintilla(activeView, SCI_GETSELTEXT, 0, 0);
-	if (selBufSize > 1) // Because it includes terminating '\0'
+	auto buf = iface.SelectedText (activeView);
+	if (!buf.empty ()) // Because it includes terminating '\0'
 	{
-		std::vector<char> SelectedText(selBufSize);
-		iface.sendMsgToScintilla(activeView, SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(SelectedText.data()));
 		switch (iface.GetEncoding(activeView)) {
 		case NppInterface::codepage::ansi:
 			{
-				std::string str(SelectedText.data());
+				std::string str(buf.data());
 				TryOpenFile({str.begin(), str.end()});
 			}
 			break;
 		case NppInterface::codepage::utf8:
 			{
-				TryOpenFile(utf8string(std::string(SelectedText.data())).to_wstring());
+				TryOpenFile(utf8string(std::string(buf.data())).to_wstring());
 			}
 			break;
 		}
 
 		return;
 	}
-
-	int curPos = iface.sendMsgToScintilla(activeView, SCI_GETCURRENTPOS, 0, 0);
-	int curLine = iface.sendMsgToScintilla(activeView, SCI_LINEFROMPOSITION, curPos);
-	int bufSize = iface.sendMsgToScintilla(activeView, SCI_LINELENGTH, curLine) + 1;
-	std::vector<char> buf(bufSize); {
-		int ret = iface.sendMsgToScintilla(activeView, SCI_GETLINE, curLine, reinterpret_cast<LPARAM>(buf.data()));
-		FIX_UNUSED(ret);
-		assert (ret == bufSize - 1);
-	}
-	int lineStart = iface.sendMsgToScintilla(activeView, SCI_POSITIONFROMLINE, curLine);
-	int index = curPos - lineStart;
-	TryOpenFile(extract_filename(buf, index));
+	TryOpenFile(extract_filename(iface.GetCurrentLine(activeView), iface.GetCurrentPosInLine(activeView)));
 }
 
 void OpenSettingsDialog() {

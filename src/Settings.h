@@ -4,7 +4,7 @@
 class IniWorker;
 
 struct Settings {
-	utf8string additionalStopChars = R"(;()'"<>[])"s;
+	utf8string additionalStopChars = R"(;()'[])"s;
 	bool openInOtherView = true;
 	bool switchToNewlyOpenedFiles = true;
 	bool openLargeFilesInOtherProgram = false;
@@ -23,6 +23,6 @@ private:
 		return additionalStopChars + forbiddenChars;
 	}
 
-	utf8string forbiddenChars = R"(<>:"|?*)"s; // File which cannot be in windows filename or path
+	utf8string forbiddenChars = R"(<>"|?*)"s; // File which cannot be in windows filename or path
 };
 

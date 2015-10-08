@@ -2,3 +2,4 @@
 '../test/b.txt'
 "../test\b.txt"
 "../test\../test/../test\b.txt"
+"d:\Devel\goto_file\test\b.txt"

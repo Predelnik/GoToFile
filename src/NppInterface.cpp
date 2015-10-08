@@ -3,15 +3,17 @@
 #include <assert.h>
 #include "PluginInterface.h"
 #include "utils/macro.h"
+#include "menuCmdID.h"
+#include "utils/misc.h"
 
 NppInterface::NppInterface(const NppData* nppData) : m_nppData{*nppData} {
 }
 
-LRESULT NppInterface::SendMsgToNpp(UINT Msg, WPARAM wParam, LPARAM lParam) {
+LRESULT NppInterface::SendMsgToNpp(UINT Msg, WPARAM wParam, LPARAM lParam) const {
 	return SendMessage(m_nppData._nppHandle, Msg, wParam, lParam);
 }
 
-LRESULT NppInterface::sendMsgToScintilla(ViewType view, UINT Msg, WPARAM wParam, LPARAM lParam) {
+LRESULT NppInterface::sendMsgToScintilla(ViewType view, UINT Msg, WPARAM wParam, LPARAM lParam) const {
 	auto handle = m_nppData._scintillaMainHandle;
 	switch (view) {
 	case ViewType::primary:
@@ -23,6 +25,12 @@ LRESULT NppInterface::sendMsgToScintilla(ViewType view, UINT Msg, WPARAM wParam,
 	default: break;
 	}
 	return SendMessage(handle, Msg, wParam, lParam);
+}
+
+std::wstring NppInterface::getDirMsg(UINT msg) const {
+	std::vector<wchar_t> buf(MAX_PATH);
+	SendMsgToNpp(msg, MAX_PATH, reinterpret_cast<LPARAM>(buf.data()));
+	return{ buf.data() };
 }
 
 int NppInterface::ToIndex(ViewType target) {
@@ -43,7 +51,7 @@ NppInterface::ViewType NppInterface::OtherView(ViewType view) {
 	return ViewType::primary;
 }
 
-NppInterface::ViewType NppInterface::ActiveView() {
+NppInterface::ViewType NppInterface::ActiveView() const {
 	int curScintilla = 0;
 	SendMsgToNpp(NPPM_GETCURRENTSCINTILLA, 0, reinterpret_cast<LPARAM>(&curScintilla));
 	if (curScintilla == 0)
@@ -59,12 +67,12 @@ bool NppInterface::OpenDocument(const std::wstring& filename) {
 	return SendMsgToNpp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(filename.data())) == TRUE;
 }
 
-bool NppInterface::IsOpened(const std::wstring& filename) {
+bool NppInterface::IsOpened(const std::wstring& filename) const {
 	auto filenames = GetOpenFilenames(ViewTarget::both);
 	return std::find(filenames.begin(), filenames.end(), filename) != filenames.end();
 }
 
-NppInterface::codepage NppInterface::GetEncoding(ViewType view) {
+NppInterface::codepage NppInterface::GetEncoding(ViewType view) const {
 	auto CodepageId = static_cast<int>(sendMsgToScintilla(view, SCI_GETCODEPAGE, 0, 0));
 	if (CodepageId == SC_CP_UTF8)
 		return codepage::utf8;
@@ -85,17 +93,68 @@ void NppInterface::ActivateDocument(const std::wstring& filepath, ViewType view)
 	ActivateDocument(it - fnames.begin(), view);
 }
 
-std::wstring NppInterface::ActiveFilePath() {
-	std::vector<wchar_t> buf(MAX_PATH);
-	SendMsgToNpp(NPPM_GETFULLCURRENTPATH, MAX_PATH, reinterpret_cast<LPARAM>(buf.data()));
-	return {buf.begin(), buf.end()};
+std::wstring NppInterface::ActiveDocumentPath() const {
+	return getDirMsg(NPPM_GETFULLCURRENTPATH);
 }
 
 void NppInterface::SwitchToFile(const std::wstring& path) {
 	SendMsgToNpp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(path.data()));
 }
 
-std::vector<std::wstring> NppInterface::GetOpenFilenames(ViewTarget viewTarget) {
+std::wstring NppInterface::ActiveFileDirectory() const {
+	return getDirMsg(NPPM_GETCURRENTDIRECTORY);
+}
+
+void NppInterface::doCommand(int id) {
+	SendMsgToNpp(WM_COMMAND, id);
+}
+
+void NppInterface::MoveActiveDocumentToOtherView() {
+	doCommand(IDM_VIEW_GOTO_ANOTHER_VIEW);
+}
+
+std::vector<char> NppInterface::SelectedText (ViewType view) const {
+	int selBufSize = sendMsgToScintilla(view, SCI_GETSELTEXT, 0, 0);
+	if (selBufSize > 1) // Because it includes terminating '\0'
+		{
+			std::vector<char> buf (selBufSize);
+			sendMsgToScintilla(view, SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(buf.data()));
+			return buf;
+		}
+	return{};
+}
+
+std::vector<char> NppInterface::GetCurrentLine(ViewType view) const {
+	int curLine = GetCurrentLineNumber(view);
+	int bufSize = sendMsgToScintilla(view, SCI_LINELENGTH, curLine) + 1;
+	std::vector<char> buf(bufSize);
+	int ret = sendMsgToScintilla(view, SCI_GETLINE, curLine, reinterpret_cast<LPARAM>(buf.data()));
+	FIX_UNUSED(ret);
+	assert(ret == bufSize - 1);
+	return buf;
+}
+
+int NppInterface::GetCurrentPosInLine(ViewType view) const {
+	return GetCurrentPos(view) - PositionFromLine(view, GetCurrentLineNumber(view));
+}
+
+int NppInterface::GetCurrentPos(ViewType view) const {
+	return sendMsgToScintilla(view, SCI_GETCURRENTPOS, 0, 0);
+}
+
+int NppInterface::GetCurrentLineNumber(ViewType view) const {
+	return LineFromPosition(view, GetCurrentPos(view));
+}
+
+int NppInterface::LineFromPosition(ViewType view, int position) const {
+	return sendMsgToScintilla(view, SCI_LINEFROMPOSITION, position);
+}
+
+int NppInterface::PositionFromLine(NppInterface::ViewType view, int line) const {
+	return sendMsgToScintilla(view, SCI_POSITIONFROMLINE, line);
+}
+
+std::vector<std::wstring> NppInterface::GetOpenFilenames(ViewTarget viewTarget) const {
 	int enumVal = -1;
 
 	switch (viewTarget) {
