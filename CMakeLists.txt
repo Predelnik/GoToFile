@@ -65,6 +65,8 @@ set (list_of_files_goto_file
   ${SRC_DIR}/NppInterface.cpp
   ${SRC_DIR}/SettingsDialog.h
   ${SRC_DIR}/SettingsDialog.cpp
+  ${SRC_DIR}/AboutDialog.h
+  ${SRC_DIR}/AboutDialog.cpp
   ${SRC_DIR}/GoToFile.rc
   ${SRC_DIR}/utils/bimap.h
   ${SRC_DIR}/utils/raii.h

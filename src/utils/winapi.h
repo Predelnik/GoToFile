@@ -34,5 +34,8 @@ namespace winapi
 	public:
 		void checkHwnd() override;
 	};
+
+	std::wstring GetProductAndVersion(HMODULE module);
+	bool FilterSyslinks(LPARAM lParam);
 }
 

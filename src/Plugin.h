@@ -7,7 +7,7 @@
 
 const std::wstring nppPluginName = L"GoToFile";
 
-const int nbFunc = 2;
+const int nbFunc = 4;
 
 enum class CustomGUIMessage;
 
@@ -40,4 +40,4 @@ bool setNextCommand(TCHAR* cmdName, PFUNCPLUGINCMD pFunc, ShortcutKey* sk = null
 
 void SaveSettings();
 void LoadSettings();
-
+HANDLE getHModule();

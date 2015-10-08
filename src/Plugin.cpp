@@ -12,6 +12,7 @@
 #include <filesystem>
 #include "utils/IniWorker.h"
 #include "utils/misc.h"
+#include "AboutDialog.h"
 
 std::wstring configFileName = L"GoToFile.ini";
 FuncItem funcItem[nbFunc];
@@ -24,6 +25,7 @@ HANDLE hModule = nullptr;
 Settings g_Settings;
 NppInterface iface(&g_nppData);
 SettingsDialog g_settingsDialog(&g_Settings);
+AboutDialog g_aboutDialog;
 
 FuncItem* get_funcItem() {
 	return funcItem;
@@ -41,7 +43,9 @@ void LoadSettings() {
 
 
 void InitDialogs() {
-	g_settingsDialog.init(static_cast<HINSTANCE>(hModule), g_nppData._nppHandle);
+	auto init = [&](auto &dlg) {dlg.init(static_cast<HINSTANCE>(hModule), g_nppData._nppHandle); };
+	init(g_settingsDialog);
+	init(g_aboutDialog);
 }
 
 void pluginInit(HANDLE hModuleArg) {
@@ -184,6 +188,10 @@ void OpenSettingsDialog() {
 	g_settingsDialog.open();
 }
 
+void OpenAboutDialog() {
+	g_aboutDialog.open();
+}
+
 void prepareIniFile(const std::wstring& path) {
 	namespace fs = std::experimental::filesystem::v1;
 	if (!fs::exists(path)) {
@@ -192,8 +200,8 @@ void prepareIniFile(const std::wstring& path) {
 		DWORD NumberOfBytesWritten;
 
 		HANDLE hFile = ::CreateFile(path.data(), GENERIC_WRITE, 0,
-		                            NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-		::WriteFile(hFile, &wBOM, sizeof(WORD), &NumberOfBytesWritten, NULL);
+		                            nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+		::WriteFile(hFile, &wBOM, sizeof(WORD), &NumberOfBytesWritten, nullptr);
 		::CloseHandle(hFile);
 	}
 }
@@ -235,7 +243,9 @@ void CommandMenuInit() {
 	shKey->_isShift = false;
 	shKey->_key = 0x41 + 'g' - 'a';
 	setNextCommand(TEXT("Go to File Under Cursor"), GotoFile, shKey, false);
+	setNextCommand(TEXT("---"), NULL, NULL, false);
 	setNextCommand(TEXT("Settings..."), OpenSettingsDialog, nullptr, false);
+	setNextCommand(TEXT("About"), OpenAboutDialog, nullptr, false);
 }
 
 //
