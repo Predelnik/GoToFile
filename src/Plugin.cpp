@@ -43,7 +43,9 @@ void LoadSettings() {
 
 
 void InitDialogs() {
-	auto init = [&](auto &dlg) {dlg.init(static_cast<HINSTANCE>(hModule), g_nppData._nppHandle); };
+	auto init = [&](auto& dlg) {
+		dlg.init(static_cast<HINSTANCE>(hModule), g_nppData._nppHandle);
+	};
 	init(g_settingsDialog);
 	init(g_aboutDialog);
 }
@@ -67,8 +69,16 @@ void TryOpenFile(const std::wstring& filename) {
 	}
 
 	namespace fs = std::experimental::filesystem::v1;
-	auto tryPath = [&](const fs::path& path) {
-		if (fs::exists(path)) {
+	auto tryPath = [&](fs::path path) {
+		if (path.empty())
+			return false;
+		std::error_code ec;
+
+		if (fs::is_regular_file(path)) {
+			path = fs::canonical(path, ec);
+			if (ec)
+				return false;
+
 			if (fs::file_size(path) > g_Settings.largeFileSizeLimit * 1024 * 1024) {
 				return reinterpret_cast<int>(ShellExecute(g_nppData._nppHandle, L"open", g_Settings.customEditorPath.to_wstring().data(), path.c_str(), nullptr, SW_SHOW)) > 32;
 			}
@@ -109,12 +119,15 @@ std::wstring extract_filename(const std::vector<char>& buf, int index) {
 			auto isPosInStopChar = [&](int Index) {
 				return g_Settings.IsStopChar(buf[Index]);
 			};
+			int n = static_cast<int>(buf.size());
+			if (start == n)
+				--start;
 			while (!isPosInStopChar(start) && start > 0)
 				--start;
 			if (isPosInStopChar(start))
 				++start;
 
-			while (!isPosInStopChar(end) && end < static_cast<int>(buf.size()))
+			while (end < n && !isPosInStopChar(end))
 				++end;
 
 			if (start < end)
@@ -129,12 +142,14 @@ std::wstring extract_filename(const std::vector<char>& buf, int index) {
 			auto isPosInStopChar = [&](auto it) {
 				return g_Settings.IsStopChar(it);
 			};
+			if (start == u8str.end())
+				--start;
 			while (!isPosInStopChar(start) && start != u8str.begin())
 				--start;
 			if (isPosInStopChar(start))
 				++start;
 
-			while (!isPosInStopChar(end) && end != u8str.end())
+			while (end != u8str.end() && !isPosInStopChar(end))
 				++end;
 
 			if (start < end)

@@ -23,6 +23,6 @@ private:
 		return additionalStopChars + forbiddenChars;
 	}
 
-	utf8string forbiddenChars = R"(<>:"/\|?*)"s; // In windows filename
+	utf8string forbiddenChars = R"(<>:"|?*)"s; // File which cannot be in windows filename or path
 };
 
