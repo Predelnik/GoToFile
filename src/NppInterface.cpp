@@ -198,9 +198,9 @@ std::vector<std::wstring> NppInterface::GetOpenFilenames(ViewTarget viewTarget) 
 	std::vector<std::wstring> res;
 	for (int i = 0; i < count; ++i) {
 		res.push_back(paths[i]);
-		delete paths[i];
+		delete[] paths[i];
 	}
-	delete paths;
+	delete[] paths;
 	return res;
 }
 
