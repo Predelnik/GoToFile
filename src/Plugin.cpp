@@ -1,7 +1,8 @@
+#include "npp/NppInterface.h"
+
 #include "Plugin.h"
 #include "Notepad_plus_msgs.h"
 #include "Settings.h"
-#include "NppInterface.h"
 #include "SettingsDialog.h"
 
 #include "utils/raii.h"

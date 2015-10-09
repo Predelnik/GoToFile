@@ -134,10 +134,6 @@ std::vector<char> NppInterface::GetCurrentLine(ViewType view) const {
 	return buf;
 }
 
-int NppInterface::GetCurrentPosInLine(ViewType view) const {
-	return GetCurrentPos(view) - PositionFromLine(view, GetCurrentLineNumber(view));
-}
-
 int NppInterface::GetCurrentPos(ViewType view) const {
 	return sendMsgToScintilla(view, SCI_GETCURRENTPOS, 0, 0);
 }

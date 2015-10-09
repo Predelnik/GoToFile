@@ -61,13 +61,14 @@ set (list_of_files_goto_file
   ${SRC_DIR}/menuCmdID.h
   ${SRC_DIR}/Settings.h
   ${SRC_DIR}/Settings.cpp
-  ${SRC_DIR}/NppInterface.h
-  ${SRC_DIR}/NppInterface.cpp
   ${SRC_DIR}/SettingsDialog.h
   ${SRC_DIR}/SettingsDialog.cpp
   ${SRC_DIR}/AboutDialog.h
   ${SRC_DIR}/AboutDialog.cpp
   ${SRC_DIR}/GoToFile.rc
+  ${SRC_DIR}/npp/EditorInterface.h
+  ${SRC_DIR}/npp/NppInterface.h
+  ${SRC_DIR}/npp/NppInterface.cpp
   ${SRC_DIR}/utils/bimap.h
   ${SRC_DIR}/utils/raii.h
   ${SRC_DIR}/utils/raii.cpp
