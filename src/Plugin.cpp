@@ -11,6 +11,7 @@
 #include "utils/IniWorker.h"
 
 #include "AboutDialog.h"
+#include "GotoFileManager.h"
 
 std::wstring configFileName = L"GoToFile.ini";
 FuncItem funcItem[nbFunc];
@@ -20,10 +21,11 @@ FuncItem funcItem[nbFunc];
 NppData g_nppData;
 std::wstring g_iniFilePath;
 HANDLE hModule = nullptr;
-Settings g_Settings;
-NppInterface iface(&g_nppData);
-SettingsDialog g_settingsDialog(&g_Settings);
+Settings g_settings;
+NppInterface g_iface(&g_nppData);
+SettingsDialog g_settingsDialog(&g_settings);
 AboutDialog g_aboutDialog;
+GotoFileManager g_fileManager (&g_iface, &g_settings);
 
 FuncItem* get_funcItem() {
 	return funcItem;
@@ -31,12 +33,12 @@ FuncItem* get_funcItem() {
 
 void SaveSettings() {
 	IniWorker worker{nppPluginName, g_iniFilePath, IniWorker::Action::save};
-	g_Settings.ProcessSettings(worker);
+	g_settings.ProcessSettings(worker);
 }
 
 void LoadSettings() {
 	IniWorker worker{nppPluginName, g_iniFilePath, IniWorker::Action::load};
-	g_Settings.ProcessSettings(worker);
+	g_settings.ProcessSettings(worker);
 }
 
 
@@ -59,124 +61,8 @@ HANDLE getHModule() {
 void pluginCleanUp() {
 }
 
-void TryOpenFile(const std::wstring& filename) {
-	auto curPath = iface.ActiveFileDirectory();
-	namespace fs = std::experimental::filesystem::v1;
-	auto tryPath = [&](fs::path path) {
-		if (path.empty())
-			return false;
-		std::error_code ec;
-
-		if (fs::is_regular_file(path)) {
-			path = fs::canonical(path, ec);
-			if (ec)
-				return false;
-
-			if (fs::file_size(path) > g_Settings.largeFileSizeLimit * 1024 * 1024) {
-				return reinterpret_cast<int>(ShellExecute(g_nppData._nppHandle, L"open", g_Settings.customEditorPath.to_wstring().data(), path.c_str(), nullptr, SW_SHOW)) > 32;
-			}
-
-			auto initialFileName = iface.ActiveDocumentPath();
-			if (iface.IsOpened(path))
-				return false;
-
-			if (!iface.OpenDocument(path))
-				return false;
-
-			iface.SwitchToFile(path);
-
-			if (g_Settings.openInOtherView)
-				iface.MoveActiveDocumentToOtherView();
-
-			iface.SwitchToFile(initialFileName);
-			if (g_Settings.switchToNewlyOpenedFiles)
-				iface.SwitchToFile(path);
-		}
-
-		return false;
-	};
-
-	// absolute path
-	if (tryPath(filename)) return;
-
-	// relative path
-	if (tryPath(fs::absolute(filename, curPath))) return;
-}
-
-std::wstring extract_filename(const std::vector<char>& buf, int index) {
-	auto activeView = iface.ActiveView();
-	switch (iface.GetEncoding(activeView)) {
-	case NppInterface::codepage::ansi:
-		{
-			int start = index, end = index;
-			auto isPosInStopChar = [&](int Index) {
-				return g_Settings.IsStopChar(buf[Index]);
-			};
-			int n = static_cast<int>(buf.size());
-			if (start == n)
-				--start;
-			while (!isPosInStopChar(start) && start > 0)
-				--start;
-			if (isPosInStopChar(start))
-				++start;
-
-			while (end < n && !isPosInStopChar(end))
-				++end;
-
-			if (start < end)
-				return {std::wstring(buf.begin() + start, buf.begin() + end)};
-		}
-		break;
-	case NppInterface::codepage::utf8:
-		{
-			utf8string u8str{buf.data()};
-			utf8string::iterator cur_it(u8str.base().begin() + index);
-			auto start = cur_it, end = cur_it;
-			auto isPosInStopChar = [&](auto it) {
-				return g_Settings.IsStopChar(it);
-			};
-			if (start == u8str.end())
-				--start;
-			while (!isPosInStopChar(start) && start != u8str.begin())
-				--start;
-			if (isPosInStopChar(start))
-				++start;
-
-			while (end != u8str.end() && !isPosInStopChar(end))
-				++end;
-
-			if (start < end)
-				return utf8string(start, end).to_wstring();
-		}
-		break;
-	}
-
-
-	return {};
-}
-
 void GotoFile() {
-	auto activeView = iface.ActiveView();
-	auto buf = iface.SelectedText (activeView);
-	if (!buf.empty ()) // Because it includes terminating '\0'
-	{
-		switch (iface.GetEncoding(activeView)) {
-		case NppInterface::codepage::ansi:
-			{
-				std::string str(buf.data());
-				TryOpenFile({str.begin(), str.end()});
-			}
-			break;
-		case NppInterface::codepage::utf8:
-			{
-				TryOpenFile(utf8string(std::string(buf.data())).to_wstring());
-			}
-			break;
-		}
-
-		return;
-	}
-	TryOpenFile(extract_filename(iface.GetCurrentLine(activeView), iface.GetCurrentPosInLine(activeView)));
+	g_fileManager.GoToFile();
 }
 
 void OpenSettingsDialog() {
@@ -207,11 +93,9 @@ void CommandMenuInit() {
 	//
 
 	// get path of plugin configuration
-	std::vector<wchar_t> buf(MAX_PATH);
-	::SendMessage(g_nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, reinterpret_cast<LPARAM>(buf.data()));
-	namespace fs = std::experimental::filesystem::v1;
 
-	std::wstring config_dir{buf.data()};
+	namespace fs = std::experimental::filesystem::v1;
+	auto config_dir = g_iface.PluginConfigDir();
 	// if config path doesn't exist, we create it
 	if (!fs::exists(config_dir)) {
 		fs::create_directories(config_dir);
@@ -238,7 +122,7 @@ void CommandMenuInit() {
 	shKey->_isShift = false;
 	shKey->_key = 0x41 + 'g' - 'a';
 	setNextCommand(TEXT("Go to File Under Cursor"), GotoFile, shKey, false);
-	setNextCommand(TEXT("---"), NULL, NULL, false);
+	setNextCommand(TEXT("---"), nullptr, nullptr, false);
 	setNextCommand(TEXT("Settings..."), OpenSettingsDialog, nullptr, false);
 	setNextCommand(TEXT("About"), OpenAboutDialog, nullptr, false);
 }
@@ -256,7 +140,7 @@ std::unique_ptr<ToolbarIconsWrapper> GotoFileIcon;
 
 void AddIcons() {
 	// GotoFileIcon = std::make_unique<ToolbarIconsWrapper> ((HINSTANCE)hModule, MAKEINTRESOURCE(IDB_AUTOCHECK2), IMAGE_BITMAP, 16, 16, LR_LOADMAP3DCOLORS);
-	::SendMessage(g_nppData._nppHandle, NPPM_ADDTOOLBARICON, (WPARAM)funcItem[0]._cmdID, (LPARAM) GotoFileIcon->get());
+	g_iface.AddToolbarIcon(funcItem[0]._cmdID, GotoFileIcon->get());
 }
 
 void commandMenuCleanUp() {

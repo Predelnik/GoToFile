@@ -34,7 +34,7 @@ namespace winapi
 		Button_SetCheck(m_hwnd, value ? BST_CHECKED : BST_UNCHECKED);
 	}
 
-	bool CheckBox::IsChecked() {
+	bool CheckBox::IsChecked() const {
 		assert(m_hwnd != nullptr);
 		return Button_GetCheck(m_hwnd) == BST_CHECKED;
 	}
@@ -48,7 +48,7 @@ namespace winapi
 		Button_SetText(m_hwnd, ws.c_str ());
 	}
 
-	std::wstring Edit::GetText() {
+	std::wstring Edit::GetText() const {
 		assert(m_hwnd != nullptr);
 		auto len = Button_GetTextLength(m_hwnd);
 		std::vector<wchar_t> buf(len + 1);

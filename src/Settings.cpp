@@ -5,13 +5,13 @@ static bool is_control(char c) {
 	return c >= '\0' && c < ' ';
 }
 
-bool Settings::IsStopChar(char ch) {
+bool Settings::IsStopChar(char ch) const {
 	utf8string str(std::string(1, ch));
 	auto sc = StopChars();
 	return is_control(ch) || sc.find(str.begin()) != sc.end();
 }
 
-bool Settings::IsStopChar(utf8string::iterator it) {
+bool Settings::IsStopChar(utf8string::iterator it) const {
 	auto sc = StopChars();
 	return is_control(*it) || sc.find(it) != sc.end();
 }

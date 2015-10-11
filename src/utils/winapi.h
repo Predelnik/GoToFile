@@ -20,14 +20,14 @@ namespace winapi
 	public:
 		void checkHwnd() override;
 		void SetChecked(bool value);
-		bool IsChecked();
+		bool IsChecked() const;
 	};
 
 	class Edit : public WinBase {
 	public:
 		void checkHwnd() override;
 		void SetText(const std::wstring& ws);
-		std::wstring GetText();
+		std::wstring GetText() const;
 	};
 
 	class Button : public WinBase {

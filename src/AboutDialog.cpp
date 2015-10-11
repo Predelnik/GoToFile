@@ -2,7 +2,6 @@
 
 #include "utils/winapi.h"
 
-#include <CommCtrl.h>
 #include <resource.h>
 #include "Plugin.h"
 

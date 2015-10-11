@@ -1,40 +1,39 @@
 #pragma once
 #include "npp/EditorInterface.h"
 
-#include <bemapiset.h>
-#include <winuser.h>
-#include <codecvt>
 #include <vector>
 
 struct NppData;
 
 class NppInterface : public EditorInterface {
 public:
-	NppInterface(const NppData* nppData);
+	explicit NppInterface(const NppData* nppData);
 
-	static ViewType OtherView(ViewType view);
 	static int ToIndex(ViewType target);
 
 	// non-const
-	bool OpenDocument(const std::wstring& filename) override;
+	bool OpenDocument(std::wstring filename) override;
 	void ActivateDocument(int index, ViewType view) override;
-	void ActivateDocument(const std::wstring& file_path, ViewType view) override;
+	void ActivateDocument(const std::wstring& filepath, ViewType view) override;
 	void SwitchToFile(const std::wstring& path) override;
 	void MoveActiveDocumentToOtherView() override;
+	void AddToolbarIcon(int cmdId, const toolbarIcons* toolBarIconsPtr) override;
 
 	// const
 	std::vector<std::wstring> GetOpenFilenames(ViewTarget viewTarget = ViewTarget::both) const override;
 	ViewType ActiveView() const override;
 	bool IsOpened(const std::wstring& filename) const override;
-	codepage GetEncoding(ViewType view) const override;
+	Codepage GetEncoding(ViewType view) const override;
 	std::wstring ActiveDocumentPath() const override;
 	std::wstring ActiveFileDirectory() const override;
 	std::vector<char> SelectedText(ViewType view) const override;
-	std::vector<char> GetCurrentLine (ViewType view) const override;
+	std::vector<char> GetCurrentLine(ViewType view) const override;
 	int GetCurrentPos(ViewType view) const override;
 	int GetCurrentLineNumber(ViewType view) const override;
 	int LineFromPosition(ViewType view, int position) const override;
+	std::wstring PluginConfigDir() const override;
 	int PositionFromLine(ViewType view, int line) const override;
+	HWND appHandle() override;
 
 private:
 	// these functions are const per se

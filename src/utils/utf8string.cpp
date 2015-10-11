@@ -37,21 +37,13 @@ int utf8_char_len(char c) {
 		return 2;
 	else if ((c & 0xE0) > 0 && (c & 0x10) == 0)
 		return 3;
-	else if ((c & 0xF0) > 0 && (c & 0x08) == 0)
-		return 4;
-	else if ((c & 0xF8) > 0 && (c & 0x04) == 0)
-		return 5;
-	else if ((c & 0xFC) > 0 && (c & 0x02) == 0)
-		return 6;
-	return 0;
-}
+	else return 4; // if ((c & 0xF0) > 0 && (c & 0x08) == 0)
 
-bool utf8_are_first_chars_equal(const char* Str1, const char* Str2) {
-	int FirstCharSize1 = utf8_char_len(*Str1);
-	int FirstCharSize2 = utf8_char_len(*Str2);
-	if (FirstCharSize1 != FirstCharSize2)
-		return FALSE;
-	return (strncmp(Str1, Str2, FirstCharSize1) == 0);
+	// According to RFC3629 UTF-8 is limited to 4 character symbols
+	//else if ((c & 0xF8) > 0 && (c & 0x04) == 0)
+	// return 5;
+	//else if ((c & 0xFC) > 0 && (c & 0x02) == 0)
+	//	return 6;
 }
 
 
@@ -61,23 +53,17 @@ const std::string wchar_t_encoding = "UTF-16LE";
 const std::string ignore_tag = "//IGNORE";
 
 std::wstring utf8string::to_wstring() const {
+	// Currently no check for validity
 	iconv_t converter = iconv_open((wchar_t_encoding + ignore_tag).c_str(), utf8_encoding.c_str());
 	size_t inSize = m_str.size() + 1;
 	size_t outSize = (utf8_len(m_str.c_str()) + 1) * 2 * sizeof (wchar_t);
 	std::vector<wchar_t> outBuf(outSize);
 	char* outBufPtr = reinterpret_cast<char *>(data(outBuf));
 	const char* inBufPtr = m_str.c_str();
-	size_t res = iconv(converter, &inBufPtr, &inSize, &outBufPtr, &outSize);
+	iconv(converter, &inBufPtr, &inSize, &outBufPtr, &outSize);
 	iconv_close(converter);
 
-	if (res == (size_t) (-1)) {
-		return std::wstring();
-	}
-
 	return std::wstring(outBuf.data()); // here goes additional copy
-}
-
-utf8string::utf8string(const char* raw_utf8): m_str{raw_utf8} {
 }
 
 utf8string::iterator::self& utf8string::iterator::operator++() {
@@ -99,7 +85,7 @@ utf8string::iterator::iterator(base_t base_it_arg): base_it{base_it_arg} {
 utf8string::utf8string(iterator start, iterator finish) : utf8string{std::string(start.base_it, finish.base_it)} {
 }
 
-struct utf8string::iterator utf8string::find(struct iterator char_ref) {
+auto utf8string::find(struct iterator char_ref) -> iterator {
 	for (auto it = begin(); it != end(); ++it) {
 		if (std::equal(it.base_it, std::next(it).base_it, char_ref.base_it, std::next(char_ref).base_it))
 			return it;
@@ -122,6 +108,7 @@ std::string get_encoding<char>() {
 
 template <typename CHAR>
 utf8string::utf8string(const std::basic_string<CHAR>& strArg) {
+	// Currently no check for validity
 	std::string target_enc = utf8_encoding + ignore_tag;
 	std::string source_enc = get_encoding<CHAR>().c_str();
 	iconv_t converter = iconv_open(target_enc.c_str(), source_enc.c_str());
@@ -130,10 +117,8 @@ utf8string::utf8string(const std::basic_string<CHAR>& strArg) {
 	std::vector<char> outBuf(outSize);
 	char* outBufPtr = outBuf.data();
 	const char* inBufPtr = reinterpret_cast<const char *>(strArg.data());
-	size_t res = iconv(converter, &inBufPtr, &inSize, &outBufPtr, &outSize);
+	iconv(converter, &inBufPtr, &inSize, &outBufPtr, &outSize);
 	iconv_close(converter);
-	if (res == static_cast<size_t>(-1))
-		return;
 
 	m_str.assign(outBuf.data());
 }

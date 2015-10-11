@@ -1,9 +1,10 @@
+#include <windows.h>
+
 #include "Plugin.h"
 
 #ifdef VLD_BUILD
 #include <vld.h>
 #endif //VLD_BUILD
-
 
 static_assert (UNICODE, "Non-unicode version is not supported");
 
@@ -54,11 +55,6 @@ extern "C" __declspec(dllexport) FuncItem* getFuncsArray(int* nbF) {
 
 
 extern "C" __declspec (dllexport) void beNotified(SCNotification* notifyCode) {
-	/*
-  // DEBUG_CODE:
-  long CurPos = SendMsgToEditor(&nppData, SCI_GETCURRENTPOS);
-  int Style = SendMsgToEditor(&nppData, SCI_GETSTYLEAT, CurPos);
-  */
 	switch (notifyCode->nmhdr.code) {
 	case NPPN_SHUTDOWN:
 		pluginCleanUp();

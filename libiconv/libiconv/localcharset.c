@@ -373,7 +373,7 @@ locale_charset (void)
 #  ifdef __CYGWIN__
   /* Cygwin < 1.7 does not have locales.  nl_langinfo (CODESET) always
      returns "US-ASCII".  Return the suffix of the locale name from the
-     environment variables (if present) or the codepage as a number.  */
+     environment variables (if present) or the Codepage as a number.  */
   if (codeset != NULL && strcmp (codeset, "US-ASCII") == 0)
     {
       const char *locale;
@@ -410,9 +410,9 @@ locale_charset (void)
             }
         }
 
-      /* Woe32 has a function returning the locale's codepage as a number:
+      /* Woe32 has a function returning the locale's Codepage as a number:
          GetACP().  This encoding is used by Cygwin, unless the user has set
-         the environment variable CYGWIN=codepage:oem (which very few people
+         the environment variable CYGWIN=Codepage:oem (which very few people
          do).
          Output directed to console windows needs to be converted (to
          GetOEMCP() if the console is using a raster font, or to
@@ -460,7 +460,7 @@ locale_charset (void)
 
   static char buf[2 + 10 + 1];
 
-  /* Woe32 has a function returning the locale's codepage as a number:
+  /* Woe32 has a function returning the locale's Codepage as a number:
      GetACP().
      When the output goes to a console window, it needs to be provided in
      GetOEMCP() encoding if the console is using a raster font, or in
@@ -513,7 +513,7 @@ locale_charset (void)
     }
   else
     {
-      /* OS/2 has a function returning the locale's codepage as a number.  */
+      /* OS/2 has a function returning the locale's Codepage as a number.  */
       if (DosQueryCp (sizeof (cp), cp, &cplen))
         codeset = "";
       else

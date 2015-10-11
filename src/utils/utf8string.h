@@ -12,7 +12,6 @@ public:
 	utf8string() : m_str() {
 	}
 
-	utf8string(const char* raw_utf8); // constructor if we know that data is already in UTF-8
 	template <class CHAR>
 	utf8string(const std::basic_string<CHAR>& strArg); // explicit convert
 	bool operator ==(const utf8string& other) const {
@@ -29,9 +28,20 @@ public:
 		return m_str.c_str();
 	}
 
+	// constructor if we know that data is already in UTF-8
+	static self from_raw_utf8 (const char* raw_utf8) {
+		self res;
+		res.m_str = raw_utf8;
+		return res;
+	}
+
 	std::wstring to_wstring() const;
 
 	std::string& base() {
+		return m_str;
+	};
+
+	const std::string& base() const {
 		return m_str;
 	};
 
@@ -47,11 +57,11 @@ public:
 
 		iterator(base_t base_it_arg);
 
-		bool operator==(const iterator& other) {
+		bool operator==(const iterator& other) const {
 			return base_it == other.base_it;
 		}
 
-		bool operator!=(const iterator& other) {
+		bool operator!=(const iterator& other) const {
 			return base_it != other.base_it;
 		}
 

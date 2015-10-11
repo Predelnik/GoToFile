@@ -30,7 +30,7 @@ LRESULT NppInterface::sendMsgToScintilla(ViewType view, UINT Msg, WPARAM wParam,
 std::wstring NppInterface::getDirMsg(UINT msg) const {
 	std::vector<wchar_t> buf(MAX_PATH);
 	SendMsgToNpp(msg, MAX_PATH, reinterpret_cast<LPARAM>(buf.data()));
-	return{ buf.data() };
+	return {buf.data()};
 }
 
 int NppInterface::ToIndex(ViewType target) {
@@ -40,15 +40,6 @@ int NppInterface::ToIndex(ViewType target) {
 	}
 	assert(false);
 	return 0;
-}
-
-NppInterface::ViewType NppInterface::OtherView(ViewType view) {
-	switch (view) {
-	case ViewType::primary: return ViewType::secondary;
-	case ViewType::secondary: return ViewType::primary;
-	}
-	assert(false);
-	return ViewType::primary;
 }
 
 NppInterface::ViewType NppInterface::ActiveView() const {
@@ -63,7 +54,7 @@ NppInterface::ViewType NppInterface::ActiveView() const {
 	return ViewType::primary;
 }
 
-bool NppInterface::OpenDocument(const std::wstring& filename) {
+bool NppInterface::OpenDocument(std::wstring filename) {
 	return SendMsgToNpp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(filename.data())) == TRUE;
 }
 
@@ -72,12 +63,12 @@ bool NppInterface::IsOpened(const std::wstring& filename) const {
 	return std::find(filenames.begin(), filenames.end(), filename) != filenames.end();
 }
 
-NppInterface::codepage NppInterface::GetEncoding(ViewType view) const {
+NppInterface::Codepage NppInterface::GetEncoding(ViewType view) const {
 	auto CodepageId = static_cast<int>(sendMsgToScintilla(view, SCI_GETCODEPAGE, 0, 0));
 	if (CodepageId == SC_CP_UTF8)
-		return codepage::utf8;
+		return Codepage::utf8;
 	else
-		return codepage::ansi;
+		return Codepage::ansi;
 }
 
 void NppInterface::ActivateDocument(int index, ViewType view) {
@@ -113,15 +104,19 @@ void NppInterface::MoveActiveDocumentToOtherView() {
 	doCommand(IDM_VIEW_GOTO_ANOTHER_VIEW);
 }
 
-std::vector<char> NppInterface::SelectedText (ViewType view) const {
+void NppInterface::AddToolbarIcon(int cmdId, const toolbarIcons* toolBarIconsPtr) {
+	SendMsgToNpp(NPPM_ADDTOOLBARICON, static_cast<WPARAM>(cmdId), reinterpret_cast<LPARAM>(toolBarIconsPtr));
+}
+
+std::vector<char> NppInterface::SelectedText(ViewType view) const {
 	int selBufSize = sendMsgToScintilla(view, SCI_GETSELTEXT, 0, 0);
 	if (selBufSize > 1) // Because it includes terminating '\0'
-		{
-			std::vector<char> buf (selBufSize);
-			sendMsgToScintilla(view, SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(buf.data()));
-			return buf;
-		}
-	return{};
+	{
+		std::vector<char> buf(selBufSize);
+		sendMsgToScintilla(view, SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(buf.data()));
+		return buf;
+	}
+	return {};
 }
 
 std::vector<char> NppInterface::GetCurrentLine(ViewType view) const {
@@ -146,8 +141,16 @@ int NppInterface::LineFromPosition(ViewType view, int position) const {
 	return sendMsgToScintilla(view, SCI_LINEFROMPOSITION, position);
 }
 
+std::wstring NppInterface::PluginConfigDir() const {
+	return getDirMsg(NPPM_GETPLUGINSCONFIGDIR);
+}
+
 int NppInterface::PositionFromLine(NppInterface::ViewType view, int line) const {
 	return sendMsgToScintilla(view, SCI_POSITIONFROMLINE, line);
+}
+
+HWND NppInterface::appHandle() {
+	return m_nppData._nppHandle;
 }
 
 std::vector<std::wstring> NppInterface::GetOpenFilenames(ViewTarget viewTarget) const {

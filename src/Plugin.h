@@ -5,6 +5,8 @@
 //
 #include "PluginInterface.h"
 
+#include <string>
+
 const std::wstring nppPluginName = L"GoToFile";
 
 const int nbFunc = 4;

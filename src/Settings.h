@@ -9,17 +9,17 @@ struct Settings {
 	bool switchToNewlyOpenedFiles = true;
 	bool openLargeFilesInOtherProgram = false;
 	int largeFileSizeLimit = 25;
-	utf8string customEditorPath = "";
+	utf8string customEditorPath;
 
-	bool IsStopChar(char ch);
+	bool IsStopChar(char ch) const;
 
-	bool IsStopChar(utf8string::iterator it);
+	bool IsStopChar(utf8string::iterator it) const;
 
 public:
 	void ProcessSettings(IniWorker& worker);
 
 private:
-	utf8string StopChars() {
+	utf8string StopChars() const {
 		return additionalStopChars + forbiddenChars;
 	}
 

@@ -1,3 +1,5 @@
+#pragma once
+
 namespace detail
 {
 	template <typename TypeA, typename TypeB>
