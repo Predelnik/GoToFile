@@ -3,6 +3,7 @@
 #include <sstream>
 #include <CommCtrl.h>
 
+#pragma warning(disable: 4505)
 static std::wstring getClassName(HWND hwnd) {
 	static const int max_class_name = 256;
 	std::vector<wchar_t> buf(max_class_name);

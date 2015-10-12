@@ -92,8 +92,8 @@ target_link_libraries (GoToFileLib libiconv)
 set_target_properties (GoToFileLib PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "src/PrecompiledHeader.h")
 cotire(GoToFileLib)
 
-add_library (GoToFileDll SHARED ${GoToFileLib_files})
-target_link_libraries (GoToFileDll GoToFileLib)
+add_library (GoToFile SHARED ${GoToFileLib_files})
+target_link_libraries (GoToFile GoToFileLib)
 
 add_executable (GoToFileTest ${gtest_files})
 target_link_libraries (GoToFileTest GoToFileLib)
@@ -101,7 +101,7 @@ set_target_properties (GoToFileTest PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "sr
 cotire(GoToFileTest)
 
 if (DEFINED DEBUG_OUTPUT_PATH)
-    set_target_properties (GoToFileDll PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DEBUG_OUTPUT_PATH} )
+    set_target_properties (GoToFile PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DEBUG_OUTPUT_PATH} )
 endif (DEFINED DEBUG_OUTPUT_PATH)
 
 SET (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SUBSYSTEM:CONSOLE,5.01")
