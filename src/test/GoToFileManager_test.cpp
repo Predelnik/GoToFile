@@ -49,16 +49,21 @@ struct FiletructureKeeper {
 	};
 
 	FiletructureKeeper() {
-		m_entities.emplace_back(L"a.txt", EntityType::file);
-		m_entities.emplace_back(L"b.txt", EntityType::file);
-		m_entities.emplace_back(L"dir_a", EntityType::dir);
+		auto add_file = [this](auto name) { m_entities.push_back(new EntityKeeper(name, EntityType::file)); };
+		auto add_dir = [this](auto name) { m_entities.push_back(new EntityKeeper(name, EntityType::dir));  };
+		add_file(L"a.txt");
+		add_file(L"b.txt");
+		add_dir(L"dir_a");
+		add_file(L"dir_a\\c.txt");
 	}
 
 	~FiletructureKeeper() {
+		for (auto it = m_entities.rbegin(); it != m_entities.rend(); ++it)
+			delete (*it);
 	}
 
 private:
-	std::vector<EntityKeeper> m_entities;
+	std::vector<EntityKeeper*> m_entities; // manual construction to enforce destruction order
 };
 
 TEST (GoToFile, basic) {
@@ -69,7 +74,7 @@ TEST (GoToFile, basic) {
 	using vt = EditorInterface::ViewType;
 
 	auto cur_file = [&] {
-		return fs::path(iface.ActiveDocumentPath()).filename();
+		return fs::path(iface.ActiveDocumentPath()).filename().wstring();
 	};
 
 	EXPECT_TRUE (iface.OpenDocument(L"a.txt"));
@@ -84,10 +89,12 @@ TEST (GoToFile, basic) {
 	EXPECT_EQ(L"b.txt", cur_file());              \
 	iface.CloseActiveFile();                      \
 	EXPECT_EQ(L"a.txt", cur_file());              \
-	iface.SetSelection (0)
+	iface.SetSelection (0);                       \
+    iface.RandomizeLineAndOffset();
 
-	for (auto enc : enum_range<EditorInterface::Codepage>())
-	{
+	settings.largeFileSizeLimit = 0; // checking that openLargeFilesInOtherProgram switch works
+
+	for (auto enc : enum_range<EditorInterface::Codepage>()) {
 		iface.SetViewCodepage(EditorInterface::ViewType::primary, enc);
 
 		iface.SetString(utf8string::from_raw_utf8("b.txt"));
@@ -96,7 +103,7 @@ TEST (GoToFile, basic) {
 		iface.SetString(utf8string::from_raw_utf8(R"(dir_a\../b.txt)")); // twisted path
 		CHECK;
 
-		iface.SetString(utf8string{ fs::absolute(L"b.txt").wstring() }); // absolute path
+		iface.SetString(utf8string{fs::absolute(L"b.txt").wstring()}); // absolute path
 		CHECK;
 
 		iface.SetString(utf8string::from_raw_utf8("b.txt")); // absolute path
@@ -116,9 +123,42 @@ TEST (GoToFile, basic) {
 		EXPECT_EQ(L"a.txt", cur_file());
 	}
 
-	settings.largeFileSizeLimit = 0;
+	settings.openLargeFilesInOtherProgram = true;
+	settings.customEditorPath = utf8string::from_raw_utf8("rundll32");
 	iface.SetString(utf8string::from_raw_utf8("b.txt")); // running external program check
 	manager.GoToFile();
 	EXPECT_EQ(L"a.txt", cur_file());
+
+	settings.switchToNewlyOpenedFiles = false;
+	settings.openLargeFilesInOtherProgram = false;
+	iface.SetString(utf8string::from_raw_utf8("b.txt"));
+	manager.GoToFile();
+	EXPECT_EQ(L"a.txt", cur_file());
+	EXPECT_EQ(std::vector<std::wstring> { fs::canonical(L"b.txt") }, iface.GetOpenFilenames(EditorInterface::ViewTarget::secondary));
+	iface.CloseActiveFile();
+	iface.SwitchToFile(fs::canonical(L"b.txt"));
+	iface.CloseActiveFile();
+
+	iface.OpenDocument(L"dir_a/c.txt");
+	iface.SetString(utf8string::from_raw_utf8("<../b.txt>"));
+	iface.SetSelection(4);
+	settings.openInOtherView = false;
+	settings.switchToNewlyOpenedFiles = true;
+	manager.GoToFile();
+	EXPECT_EQ(L"b.txt", cur_file());
+	EXPECT_EQ(vt::primary, iface.ActiveView());
+	EXPECT_TRUE (iface.GetOpenFilenames(EditorInterface::ViewTarget::secondary).empty());
+	iface.SetString(utf8string::from_raw_utf8("dir_a/c.txt"));
+	manager.GoToFile();
+	EXPECT_EQ(L"b.txt", cur_file());
+	EXPECT_EQ(vt::primary, iface.ActiveView());
+	iface.CloseActiveFile();
+
+	// Checking that files relative to working dir should not work
+	iface.SetString(utf8string::from_raw_utf8("??b.txt??"));
+	manager.GoToFile();
+	EXPECT_EQ(L"c.txt", cur_file());
+	EXPECT_EQ(vt::primary, iface.ActiveView());
+	EXPECT_EQ(1u, iface.GetOpenFilenames(EditorInterface::ViewTarget::primary).size ());
 }
 

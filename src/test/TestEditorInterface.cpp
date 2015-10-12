@@ -19,14 +19,14 @@ bool TestEditorInterface::OpenDocument(std::wstring filename) {
 
 	for (auto view : enum_range<ViewType>()) {
 		auto opt_it = find_c(m_viewData[view].fileList, filename);
-		m_viewData[view].activeFile = opt_it;
 		if (opt_it)
-			return true;
+		   return true;
 	}
 
 	auto& data = ActiveViewData();
 	auto p = data.fileList.insert(fs::canonical(filename));
-	data.activeFile = p.first;
+	if (!data.activeFile)
+		data.activeFile = p.first;
 	return true;
 }
 
@@ -51,6 +51,7 @@ void TestEditorInterface::SwitchToFile(const std::wstring& path) {
 		auto opt_it = find_c(data.fileList, path);
 		if (opt_it) {
 			data.activeFile = opt_it;
+			m_activeView = view;
 			return;
 		}
 	}
@@ -65,7 +66,7 @@ void TestEditorInterface::MoveActiveDocumentToOtherView() {
 	ActiveViewData().fileList.erase(it);
 	ActiveViewData().activeFile = nullopt;
 	if (!ActiveViewData().fileList.empty())
-		ActiveViewData().fileList.begin();
+		ActiveViewData().activeFile = ActiveViewData().fileList.begin();
 
 	m_activeView = OtherView(m_activeView);
 	auto p = ActiveViewData().fileList.insert(file);
@@ -166,8 +167,6 @@ int TestEditorInterface::PositionFromLine(ViewType /*view*/, int /*line*/) const
 }
 
 HWND TestEditorInterface::appHandle() {
-	// Not a good idea
-	assert(false);
 	return nullptr;
 }
 
@@ -184,7 +183,10 @@ void TestEditorInterface::SetViewCodepage(ViewType view, Codepage cp) {
 void TestEditorInterface::CloseActiveFile() {
 	if (ActiveViewData().activeFile) {
 		ActiveViewData().fileList.erase(ActiveViewData().activeFile.value());
-		ActiveViewData().activeFile = nullopt;
+		if (!ActiveViewData().fileList.empty())
+			ActiveViewData().activeFile = ActiveViewData().fileList.begin();
+		else
+			ActiveViewData().activeFile = nullopt;
 	}
 	if (m_activeView == ViewType::secondary && ActiveViewData().fileList.empty())
 		m_activeView = ViewType::primary;

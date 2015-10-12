@@ -20,13 +20,13 @@ void GotoFileManager::TryOpenFile(const std::wstring& filename) {
 			if (ec)
 				return false;
 
-			if (fs::file_size(path) > m_settings.largeFileSizeLimit * 1024 * 1024) {
+			if (m_settings.openLargeFilesInOtherProgram && fs::file_size(path) > m_settings.largeFileSizeLimit * 1024 * 1024) {
 				return reinterpret_cast<int>(ShellExecute(m_iface.appHandle(), L"open", m_settings.customEditorPath.to_wstring().data(), path.c_str(), nullptr, SW_SHOW)) > 32;
 			}
 
 			auto initialFileName = m_iface.ActiveDocumentPath();
 			if (m_iface.IsOpened(path))
-				return false;
+				return true;
 
 			if (!m_iface.OpenDocument(path))
 				return false;
@@ -39,16 +39,18 @@ void GotoFileManager::TryOpenFile(const std::wstring& filename) {
 			m_iface.SwitchToFile(initialFileName);
 			if (m_settings.switchToNewlyOpenedFiles)
 				m_iface.SwitchToFile(path);
+
+			return true;
 		}
 
 		return false;
 	};
 
 	// absolute path
-	if (tryPath(filename)) return;
+	if (fs::path(filename).is_absolute() && tryPath(filename)) return;
 
 	// relative path
-	if (tryPath(fs::absolute(filename, curPath))) return;
+	if (fs::path(filename).is_relative() && tryPath(fs::absolute(filename, curPath))) return;
 }
 
 std::wstring GotoFileManager::extract_filename(const std::vector<char>& buf, int index) {

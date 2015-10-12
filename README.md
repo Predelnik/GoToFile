@@ -1,2 +1,2 @@
 goto_file
-Simple Notepad++ plugin to goto file under cursor.
+Simple Notepad++ plugin to go to file under cursor.
